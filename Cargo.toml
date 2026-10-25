@@ -1,0 +1,17 @@
+[package]
+name = "go_problems"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ab_glyph = "0.2"
+anyhow = "1"
+image = { version = "0.25", default-features = false, features = ["png"] }
+native-tls = "0.2.18"
+rand = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+suppaftp = { version = "12.2.1", features = ["native-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+toml = "0.8"

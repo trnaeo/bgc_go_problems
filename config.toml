@@ -1,0 +1,69 @@
+# Verzeichnis, in das .sgf und .png geschrieben werden
+output_dir = "."
+
+[api]
+# ACHTUNG: Endpunkt und Parametername bitte anhand der RapidAPI-Doku prüfen.
+url = "https://go-problem-api.p.rapidapi.com/v1/problem"
+host = "go-problem-api.p.rapidapi.com"
+# Name der Query-Parameters, mit dem das Niveau übergeben wird (Wert z.B. "18K")
+rank_param = "rank"
+# Name des Users, um geladene Probleme als "seen" zu kennzeichnen.
+user_id = "bgc_api_user_01"
+# Name des Query-Parameters für die user_id
+user_id_param = "userId"
+# Name der Umgebungsvariable, die den x-rapidapi-key enthält
+key_env = "RAPIDAPI_KEY"
+
+[render]
+# Koordinaten (Buchstaben oben, Zahlen rechts) anzeigen?
+coordinates = true
+# Kantenlänge eines Gitterfeldes in Pixel
+cell_size = 40
+# Anzahl zusätzlicher Linien um die Steine/Lösungszüge herum
+margin = 1
+
+# FTP-Upload der erzeugten .sgf/.png (vorhandene Dateien werden überschrieben).
+# Ohne diesen Abschnitt (oder mit --no-upload) wird nichts hochgeladen.
+[ftp]
+# Upload ein-/ausschalten (false = Dateien werden nur lokal erzeugt)
+enabled = false
+# Namen der Umgebungsvariablen mit den Zugangsdaten
+# (host: "ftp.example.com" oder "ftp.example.com:21")
+host_env = "BGC_FTP_HOST"
+user_env = "BGC_FTP_USER"
+password_env = "BGC_FTP_PASSW"
+# Zielverzeichnis auf dem Server (fehlende Verzeichnisse werden angelegt)
+remote_dir = "/html/go-probleme"
+# "explicit_tls" (FTPS, AUTH TLS) oder "plain" (unverschlüsselt, nicht empfohlen)
+security = "plain"
+# Solange die Webseite kein gültiges Zertifikat hat: true.
+# SOBALD DAS ZERTIFIKAT AKTIV IST: auf false setzen bzw. Zeile entfernen,
+# sonst ist die Verbindung nicht gegen Man-in-the-Middle geschützt!
+accept_invalid_certs = true
+
+# Pro Niveau wird ein zufälliger Rang im Bereich from..=to angefragt.
+# Ausgabe: problem-<name>.sgf / problem-<name>.png / problem-<name>-solution.png
+[[levels]]
+name = "26k"
+from = "26k"
+to = "30k"
+
+[[levels]]
+name = "20k"
+from = "20k"
+to = "25k"
+
+[[levels]]
+name = "14k"
+from = "14k"
+to = "19k"
+
+[[levels]]
+name = "8k"
+from = "8k"
+to = "13k"
+
+[[levels]]
+name = "2k"
+from = "2k"
+to = "7k"

@@ -1,0 +1,49 @@
+name: Tägliche Go-Probleme
+
+on:
+  schedule:
+    # GitHub verwendet UTC: 00:00 UTC = 01:00 (Winter) bzw. 02:00 (Sommer) in der Schweiz.
+    # Für Mitternacht Sommerzeit z.B. '0 22 * * *' verwenden.
+    - cron: "0 0 * * *"
+  # Manueller Start über den Actions-Tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: OpenSSL-Entwicklungsdateien (für FTPS)
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tests
+        run: cargo test --locked
+
+      - name: Probleme abrufen, rendern und per FTP hochladen
+        run: cargo run --release --locked
+        env:
+          # Namen müssen zu api.key_env bzw. [ftp] host_env/user_env/password_env in config.toml passen
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          BGC_FTP_HOST: ${{ secrets.BGC_FTP_HOST }}
+          BGC_FTP_USER: ${{ secrets.BGC_FTP_USER }}
+          BGC_FTP_PASSW: ${{ secrets.BGC_FTP_PASSW }}
+
+      - name: Erzeugte Dateien als Artefakt sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: problems
+          path: |
+            problem-*.sgf
+            problem-*.png
+          if-no-files-found: ignore
+          retention-days: 7
