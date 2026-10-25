@@ -8,7 +8,7 @@ host = "go-problem-api.p.rapidapi.com"
 # Name der Query-Parameters, mit dem das Niveau übergeben wird (Wert z.B. "18K")
 rank_param = "rank"
 # Name des Users, um geladene Probleme als "seen" zu kennzeichnen.
-user_id = "bgc_api_user_01"
+user_id = "bgc_api_user_02"
 # Name des Query-Parameters für die user_id
 user_id_param = "userId"
 # Name der Umgebungsvariable, die den x-rapidapi-key enthält
@@ -65,5 +65,5 @@ to = "13k"
 
 [[levels]]
 name = "2k"
-from = "2k"
+from = "1d"
 to = "7k"
