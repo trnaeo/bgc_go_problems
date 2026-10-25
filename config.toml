@@ -26,7 +26,7 @@ margin = 1
 # Ohne diesen Abschnitt (oder mit --no-upload) wird nichts hochgeladen.
 [ftp]
 # Upload ein-/ausschalten (false = Dateien werden nur lokal erzeugt)
-enabled = false
+enabled = true
 # Namen der Umgebungsvariablen mit den Zugangsdaten
 # (host: "ftp.example.com" oder "ftp.example.com:21")
 host_env = "BGC_FTP_HOST"
