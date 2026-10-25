@@ -1,5 +1,5 @@
 # Verzeichnis, in das .sgf und .png geschrieben werden
-output_dir = "."
+output_dir = "problems"
 
 [api]
 # ACHTUNG: Endpunkt und Parametername bitte anhand der RapidAPI-Doku prüfen.

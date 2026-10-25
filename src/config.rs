@@ -88,7 +88,7 @@ pub struct Level {
 }
 
 fn default_output_dir() -> PathBuf {
-    PathBuf::from(".")
+    PathBuf::from("problems")
 }
 
 fn default_rank_param() -> String {

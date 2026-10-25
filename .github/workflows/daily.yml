@@ -43,7 +43,7 @@ jobs:
         with:
           name: problems
           path: |
-            problem-*.sgf
-            problem-*.png
+            problems/problem-*.sgf
+            problems/problem-*.png
           if-no-files-found: ignore
           retention-days: 7
