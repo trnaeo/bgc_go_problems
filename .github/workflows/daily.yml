@@ -14,7 +14,9 @@ permissions:
 jobs:
   # Job 1: Probleme abrufen, rendern und als Artefakt weitergeben (kein FTP).
   fetch:
-    runs-on: ubuntu-latest
+    # Feste Version statt ubuntu-latest: Das Binary wird in Job 2 wiederverwendet und
+    # linkt OpenSSL dynamisch, beide Jobs müssen daher dasselbe Image nutzen.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -46,22 +48,35 @@ jobs:
           overwrite: true
           retention-days: 7
 
+      # Das in diesem Job gebaute Binary wird im Upload-Job wiederverwendet (kein erneutes Kompilieren).
+      - name: Binary als Artefakt sichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary
+          path: target/release/go_problems
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
   # Job 2: FTP-Upload. Schlägt er fehl, genügt "Re-run failed jobs":
   # Job 1 wird dann nicht wiederholt, die Dateien kommen aus dem Artefakt.
   upload:
     needs: fetch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Wiederholungen mit Wartezeit (siehe [ftp] retry_* in config.toml) brauchen Zeit
     timeout-minutes: 30
     steps:
+      # Nur die Konfiguration wird benötigt, das Binary kommt aus Job 1
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: config.toml
+          sparse-checkout-cone-mode: false
 
-      - name: OpenSSL-Entwicklungsdateien (für FTPS)
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Binary aus Job 1 laden
+        uses: actions/download-artifact@v4
+        with:
+          name: binary
+          path: bin
 
       - name: Dateien aus Job 1 laden
         uses: actions/download-artifact@v4
@@ -70,7 +85,8 @@ jobs:
           path: problems
 
       - name: Per FTP hochladen
-        run: cargo run --release --locked -- --upload-only
+        # Artefakte verlieren das Ausführungsrecht
+        run: chmod +x bin/go_problems && bin/go_problems --upload-only
         env:
           # Namen müssen zu [ftp] host_env/user_env/password_env in config.toml passen
           BGC_FTP_HOST: ${{ secrets.BGC_FTP_HOST }}

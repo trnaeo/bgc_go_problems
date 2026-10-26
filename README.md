@@ -93,12 +93,17 @@ If you change `max_attempts` or `retry_wait_minutes`, keep `timeout-minutes` of 
 (and on manual dispatch) as two jobs:
 
 1. **`fetch`** – runs the tests, fetches and renders the problems (`--no-upload`) and
-   stores `problems/` as the workflow artifact `problems` (kept for 7 days).
-2. **`upload`** (needs `fetch`) – downloads the artifact and uploads it via FTP
-   (`--upload-only`).
+   stores `problems/` as the workflow artifact `problems` and the compiled binary as the
+   artifact `binary` (both kept for 7 days).
+2. **`upload`** (needs `fetch`) – downloads both artifacts and uploads the files via FTP
+   (`--upload-only`). It does not compile anything and needs no Rust toolchain.
+
+Both jobs run on the pinned image `ubuntu-24.04`, because the binary links OpenSSL
+dynamically and is reused between the jobs.
 
 If the FTP upload fails, use **Re-run failed jobs** in the Actions tab: only the `upload`
-job runs again, using the files already produced by `fetch` (no new problems are fetched).
+job runs again, using the files and the binary already produced by `fetch` (no new
+problems are fetched).
 
 The secrets must be created under *Settings → Secrets and variables → **Actions***:
 `RAPIDAPI_KEY` (used by `fetch`) and `BGC_FTP_HOST`, `BGC_FTP_USER`, `BGC_FTP_PASSW`
