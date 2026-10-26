@@ -21,7 +21,8 @@ Verwendung:
       Holt pro konfiguriertem Niveau ein Problem, erzeugt .sgf und .png und lädt sie
       per FTP hoch (falls [ftp] konfiguriert ist).
   go_problems --upload-only [--config config.toml]
-      Lädt die vorhandenen Dateien aus output_dir hoch, ohne neue Probleme abzurufen.
+      Lädt die vorhandenen Dateien aus output_dir hoch, ohne neue Probleme abzurufen
+      (mit Wiederholung gemäss [ftp] retry_wait_minutes / max_attempts).
   go_problems --sgf datei.sgf [--out praefix] [--config config.toml]
       Rendert eine lokale SGF-Datei (ohne API) nach <praefix>.png und <praefix>-solution.png.";
 
@@ -86,8 +87,16 @@ async fn run() -> Result<()> {
                 let path = path_with_suffix(&prefix, suffix);
                 if path.exists() {
                     files.push(path);
+                } else {
+                    eprintln!("  Warnung: {} fehlt", path.display());
                 }
             }
+        }
+        if files.is_empty() {
+            bail!(
+                "keine Dateien zum Hochladen in {} gefunden",
+                config.output_dir.display()
+            );
         }
         println!("FTP-Upload ({} Dateien) ...", files.len());
         return ftp::upload(ftp_cfg, files).await;

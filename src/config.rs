@@ -31,6 +31,12 @@ pub struct FtpConfig {
     /// Zertifikat des Servers nicht prüfen (nur bis ein gültiges Zertifikat aktiv ist!)
     #[serde(default)]
     pub accept_invalid_certs: bool,
+    /// Wartezeit in Minuten zwischen zwei Upload-Versuchen
+    #[serde(default = "default_retry_wait_minutes")]
+    pub retry_wait_minutes: u64,
+    /// Gesamtzahl der Versuche (1 = keine Wiederholung)
+    #[serde(default = "default_max_attempts")]
+    pub max_attempts: u32,
 }
 
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
@@ -43,6 +49,14 @@ pub enum FtpSecurity {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_retry_wait_minutes() -> u64 {
+    5
+}
+
+fn default_max_attempts() -> u32 {
+    3
 }
 
 fn default_remote_dir() -> String {

@@ -12,9 +12,47 @@ permissions:
   contents: read
 
 jobs:
-  run:
+  # Job 1: Probleme abrufen, rendern und als Artefakt weitergeben (kein FTP).
+  fetch:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: OpenSSL-Entwicklungsdateien
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tests
+        run: cargo test --locked
+
+      - name: Probleme abrufen und rendern
+        run: cargo run --release --locked -- --no-upload
+        env:
+          # Name muss zu api.key_env in config.toml passen
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+
+      # Wird nur bei Erfolg erzeugt; der Upload-Job holt sich die Dateien von hier.
+      # overwrite: ein "Re-run" dieses Jobs ersetzt das Artefakt.
+      - name: Erzeugte Dateien als Artefakt sichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: problems
+          path: problems/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  # Job 2: FTP-Upload. Schlägt er fehl, genügt "Re-run failed jobs":
+  # Job 1 wird dann nicht wiederholt, die Dateien kommen aus dem Artefakt.
+  upload:
+    needs: fetch
+    runs-on: ubuntu-latest
+    # Wiederholungen mit Wartezeit (siehe [ftp] retry_* in config.toml) brauchen Zeit
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -25,25 +63,16 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Tests
-        run: cargo test --locked
+      - name: Dateien aus Job 1 laden
+        uses: actions/download-artifact@v4
+        with:
+          name: problems
+          path: problems
 
-      - name: Probleme abrufen, rendern und per FTP hochladen
-        run: cargo run --release --locked
+      - name: Per FTP hochladen
+        run: cargo run --release --locked -- --upload-only
         env:
-          # Namen müssen zu api.key_env bzw. [ftp] host_env/user_env/password_env in config.toml passen
-          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          # Namen müssen zu [ftp] host_env/user_env/password_env in config.toml passen
           BGC_FTP_HOST: ${{ secrets.BGC_FTP_HOST }}
           BGC_FTP_USER: ${{ secrets.BGC_FTP_USER }}
           BGC_FTP_PASSW: ${{ secrets.BGC_FTP_PASSW }}
-
-      - name: Erzeugte Dateien als Artefakt sichern
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: problems
-          path: |
-            problems/problem-*.sgf
-            problems/problem-*.png
-          if-no-files-found: ignore
-          retention-days: 7

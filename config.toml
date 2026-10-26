@@ -40,6 +40,12 @@ security = "plain"
 # SOBALD DAS ZERTIFIKAT AKTIV IST: auf false setzen bzw. Zeile entfernen,
 # sonst ist die Verbindung nicht gegen Man-in-the-Middle geschützt!
 accept_invalid_certs = true
+# Wiederholung bei vorübergehenden Fehlern (Verbindungsabbruch, Timeout, 4xx-Antworten).
+# Falsche Zugangsdaten, fehlendes FTPS usw. führen sofort zum Abbruch.
+# Wartezeit zwischen den Versuchen in Minuten
+retry_wait_minutes = 5
+# Gesamtzahl der Versuche (3 = 1 Versuch + 2 Wiederholungen; 1 = keine Wiederholung)
+max_attempts = 3
 
 # Pro Niveau wird ein zufälliger Rang im Bereich from..=to angefragt.
 # Ausgabe: problem-<name>.sgf / problem-<name>.png / problem-<name>-solution.png

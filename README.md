@@ -41,7 +41,8 @@ cargo run --release
 # Same, but never upload
 cargo run --release -- --no-upload
 
-# Only upload the files already present in output_dir
+# Only upload the files already present in output_dir (with retries, see [ftp] settings);
+# fails if no files are found
 cargo run --release -- --upload-only
 
 # Render a local SGF file (no API access needed)
@@ -69,18 +70,39 @@ Everything is configured in [`config.toml`](config.toml):
 - `[api]` – endpoint URL, RapidAPI host, query parameter names, user id used to mark problems as "seen"
 - `[render]` – `coordinates` (show coordinates), `cell_size` (pixels per grid cell), `margin` (extra lines around the stones)
 - `[ftp]` – `enabled`, names of the credential environment variables, `remote_dir`,
-  `security` (`explicit_tls` or `plain`) and `accept_invalid_certs`
+  `security` (`explicit_tls` or `plain`), `accept_invalid_certs`, and the retry settings
+  `retry_wait_minutes` (default 5) and `max_attempts` (default 3, total number of attempts)
 - `[[levels]]` – one entry per level with a `name` and a rank range (`from` / `to`, e.g. `"20k"` – `"25k"`)
 
 > **Note:** `accept_invalid_certs = true` disables certificate verification for FTPS.
 > Set it to `false` as soon as the server has a valid certificate.
 
+### FTP retries
+
+Transient FTP errors (connection closed/timeouts, temporary 4xx replies such as 421)
+are retried after `retry_wait_minutes`, up to `max_attempts` attempts in total.
+Permanent errors (wrong credentials, server without FTPS, missing permissions) abort
+immediately, so that a wrong password is not tried repeatedly.
+
+If you change `max_attempts` or `retry_wait_minutes`, keep `timeout-minutes` of the
+`upload` job in the workflow in mind.
+
 ## GitHub Actions
 
-[`.github/workflows/daily.yml`](.github/workflows/daily.yml) runs the tests and the tool
-every day at 00:00 UTC (and on manual dispatch). Secrets `RAPIDAPI_KEY`, `BGC_FTP_HOST`,
-`BGC_FTP_USER` and `BGC_FTP_PASSW` must be set in the repository settings. The generated
-files in `problems/` are kept as a workflow artifact for 7 days.
+[`.github/workflows/daily.yml`](.github/workflows/daily.yml) runs every day at 00:00 UTC
+(and on manual dispatch) as two jobs:
+
+1. **`fetch`** – runs the tests, fetches and renders the problems (`--no-upload`) and
+   stores `problems/` as the workflow artifact `problems` (kept for 7 days).
+2. **`upload`** (needs `fetch`) – downloads the artifact and uploads it via FTP
+   (`--upload-only`).
+
+If the FTP upload fails, use **Re-run failed jobs** in the Actions tab: only the `upload`
+job runs again, using the files already produced by `fetch` (no new problems are fetched).
+
+The secrets must be created under *Settings → Secrets and variables → **Actions***:
+`RAPIDAPI_KEY` (used by `fetch`) and `BGC_FTP_HOST`, `BGC_FTP_USER`, `BGC_FTP_PASSW`
+(used by `upload`).
 
 ## Project layout
 
