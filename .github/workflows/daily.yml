@@ -4,7 +4,7 @@ on:
   schedule:
     # GitHub verwendet UTC: 00:00 UTC = 01:00 (Winter) bzw. 02:00 (Sommer) in der Schweiz.
     # Für Mitternacht Sommerzeit z.B. '0 22 * * *' verwenden.
-    - cron: "0 0 * * *"
+    - cron: "35 */2 * * *"
   # Manueller Start über den Actions-Tab
   workflow_dispatch:
 
