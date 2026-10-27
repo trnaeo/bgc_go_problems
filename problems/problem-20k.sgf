@@ -1,2 +1,3 @@
-(;C[Rank: 23K
-White To Play]AB[cc][cf][cg][ch][dd][de][ed][ef]AW[dc][dh][fe][ee][ec][di][df][dg]TR[ed]LB[fd:d][fc:c][cd:b][cb:a](;W[fd]LB[cb:B]C[CORRECT])(;W[cb];B[fd])(;W[cd];B[fd]TR[ec][dc])(;W[fc];B[fd]TR[ec][dc]))
+(;C[Rank: 22K
+White To Play
+7 Approaches]FF[4]GM[1]SZ[19]AB[rq][sp][ro][qp][qo][pr][pq][so]AW[qq][qr][ps][or][nq][np][oo][pn][qn][rn][sn](;W[rr];B[sr](;W[pp]C[CORRECT])(;W[oq]C[CORRECT])(;W[qs]C[CORRECT])(;W[rs]C[CORRECT])(;W[os]C[CORRECT]))(;W[pp];B[rr](;W[oq];B[sr])(;W[qs];B[rs]))(;W[sr];B[rr](;W[rs];B[qs];W[qr]C[CORRECT])(;W[qs];B[rs]))(;W[rs];B[rr];W[sr];B[qs];W[qr]C[CORRECT])(;W[qs];B[rr])(;W[sq];B[rr])(;W[oq];B[rr])(;W[os];B[rr]))
