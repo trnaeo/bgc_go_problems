@@ -65,7 +65,7 @@ jobs:
     needs: fetch
     runs-on: ubuntu-24.04
     # Wiederholungen mit Wartezeit (siehe [ftp] retry_* in config.toml) brauchen Zeit
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       # Nur die Konfiguration wird benötigt, das Binary kommt aus Job 1
       - uses: actions/checkout@v4
