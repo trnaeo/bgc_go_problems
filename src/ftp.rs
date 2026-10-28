@@ -13,9 +13,9 @@ use suppaftp::{
 use crate::config::{FtpConfig, FtpSecurity};
 
 /// Timeout für den TCP-Verbindungsaufbau
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
 /// Timeout für Lesen/Schreiben auf der Steuerverbindung (inkl. Begrüssung des Servers)
-const IO_TIMEOUT: Duration = Duration::from_secs(60);
+const IO_TIMEOUT: Duration = Duration::from_secs(120);
 
 struct Credentials {
     host: String,
