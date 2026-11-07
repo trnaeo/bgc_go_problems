@@ -52,24 +52,24 @@ max_attempts = 15
 [[levels]]
 name = "26k"
 from = "26k"
-to = "30k"
+to = "16k"
 
 [[levels]]
 name = "20k"
-from = "20k"
-to = "25k"
+from = "15k"
+to = "11k"
 
 [[levels]]
 name = "14k"
-from = "14k"
-to = "19k"
+from = "10k"
+to = "6k"
 
 [[levels]]
 name = "8k"
-from = "8k"
-to = "13k"
+from = "5k"
+to = "1d"
 
 [[levels]]
 name = "2k"
-from = "1d"
-to = "7k"
+from = "2d"
+to = "3d"
