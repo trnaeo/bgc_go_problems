@@ -7,7 +7,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use suppaftp::native_tls::TlsConnector;
 use suppaftp::types::FileType;
 use suppaftp::{
-    FtpError, FtpStream, ImplFtpStream, NativeTlsConnector, NativeTlsFtpStream, TlsStream,
+    FtpError, FtpStream, ImplFtpStream, NativeTlsConnector, NativeTlsFtpStream, Status, TlsStream,
 };
 
 use crate::config::{FtpConfig, FtpSecurity};
@@ -156,20 +156,148 @@ fn transfer<T: TlsStream>(
     ftp.transfer_type(FileType::Binary)?;
     change_dir(ftp, &cfg.remote_dir)?;
 
+    let mut needed: u64 = 0;
+    for path in files {
+        needed += std::fs::metadata(path)
+            .with_context(|| format!("{} nicht lesbar", path.display()))?
+            .len();
+    }
+    let mut cleaned = false;
+    match free_space(ftp) {
+        Some(free) => {
+            println!(
+                "  Freier Speicher auf dem FTP-Server: {} (benötigt für Upload: {})",
+                format_bytes(free),
+                format_bytes(needed)
+            );
+            if free < needed {
+                println!(
+                    "  Zu wenig Speicher auf dem FTP-Server, lösche alte Problem-Dateien in {} ...",
+                    cfg.remote_dir
+                );
+                cleanup_remote(ftp, &[])?;
+                cleaned = true;
+                if let Some(free) = free_space(ftp) {
+                    println!("  Freier Speicher nach dem Löschen: {}", format_bytes(free));
+                }
+            }
+        }
+        None => println!(
+            "  Freier Speicher auf dem FTP-Server: unbekannt (Server meldet ihn nicht); \
+             benötigt für Upload: {}",
+            format_bytes(needed)
+        ),
+    }
+
+    // Dateien, die in diesem Lauf bereits hochgeladen wurden; das Aufräumen darf sie nicht löschen.
+    let mut uploaded: Vec<String> = Vec::new();
     for path in files {
         let name = path
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or_else(|| anyhow!("ungültiger Dateiname {}", path.display()))?;
-        let mut file =
-            File::open(path).with_context(|| format!("{} nicht lesbar", path.display()))?;
-        // STOR überschreibt eine vorhandene Datei gleichen Namens
-        ftp.put_file(name, &mut file)
-            .with_context(|| format!("Upload von {name} fehlgeschlagen"))?;
+        let mut result = put(ftp, name, path);
+        if let Err(e) = &result {
+            if !cleaned && is_out_of_space(e) {
+                println!(
+                    "  Kein Speicherplatz mehr auf dem FTP-Server ({e:#}), \
+                     lösche alte Problem-Dateien in {} und versuche es erneut ...",
+                    cfg.remote_dir
+                );
+                cleanup_remote(ftp, &uploaded)?;
+                cleaned = true;
+                result = put(ftp, name, path);
+            }
+        }
+        result?;
         println!("  hochgeladen: {name}");
+        uploaded.push(name.to_string());
     }
     let _ = ftp.quit();
     Ok(())
+}
+
+fn put<T: TlsStream>(ftp: &mut ImplFtpStream<T>, name: &str, path: &PathBuf) -> Result<()> {
+    let mut file = File::open(path).with_context(|| format!("{} nicht lesbar", path.display()))?;
+    // STOR überschreibt eine vorhandene Datei gleichen Namens
+    ftp.put_file(name, &mut file)
+        .with_context(|| format!("Upload von {name} fehlgeschlagen"))?;
+    Ok(())
+}
+
+/// 552 (Quota überschritten) bzw. 452 (zu wenig Speicherplatz).
+fn is_out_of_space(err: &anyhow::Error) -> bool {
+    err.chain().any(|cause| {
+        matches!(
+            cause.downcast_ref::<FtpError>(),
+            Some(FtpError::UnexpectedResponse(r)) if matches!(r.status.code(), 452 | 552)
+        )
+    })
+}
+
+/// Fragt den freien Speicher per `AVBL` (Erweiterung, nicht jeder Server kennt sie) ab.
+/// Liefert `None`, wenn der Server den Wert nicht meldet; FTP kennt dafür keinen Standardbefehl.
+fn free_space<T: TlsStream>(ftp: &mut ImplFtpStream<T>) -> Option<u64> {
+    let resp = ftp.custom_command("AVBL", &[Status::File]).ok()?;
+    let text = resp.as_string().ok()?;
+    let last = text.lines().rev().find(|l| !l.trim().is_empty())?;
+    // "213 <bytes>"
+    last.get(4..)?.trim().parse().ok()
+}
+
+fn is_problem_file(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.starts_with("problem-") && (lower.ends_with(".png") || lower.ends_with(".sgf"))
+}
+
+/// Löscht die `problem-*.png` und `problem-*.sgf` im aktuellen Verzeichnis und protokolliert es.
+/// Dateien in `keep` (bereits hochgeladen) bleiben erhalten.
+fn cleanup_remote<T: TlsStream>(ftp: &mut ImplFtpStream<T>, keep: &[String]) -> Result<()> {
+    let lines = ftp
+        .list(None)
+        .context("Verzeichnisinhalt des FTP-Servers nicht lesbar")?;
+    let mut count = 0;
+    let mut freed: u64 = 0;
+    for line in &lines {
+        let Ok(entry) = suppaftp::list::File::try_from(line.as_str()) else {
+            continue;
+        };
+        if !entry.is_file()
+            || !is_problem_file(entry.name())
+            || keep.iter().any(|k| k == entry.name())
+        {
+            continue;
+        }
+        let name = entry.name().to_string();
+        let size = entry.size() as u64;
+        match ftp.rm(&name) {
+            Ok(()) => {
+                println!("  gelöscht: {name} ({})", format_bytes(size));
+                count += 1;
+                freed += size;
+            }
+            Err(e) => eprintln!("  Warnung: {name} nicht löschbar: {e}"),
+        }
+    }
+    println!(
+        "  {count} Datei(en) auf dem FTP-Server gelöscht, {} freigegeben",
+        format_bytes(freed)
+    );
+    Ok(())
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const KIB: f64 = 1024.0;
+    let b = bytes as f64;
+    if b >= KIB * KIB * KIB {
+        format!("{:.2} GiB", b / (KIB * KIB * KIB))
+    } else if b >= KIB * KIB {
+        format!("{:.2} MiB", b / (KIB * KIB))
+    } else if b >= KIB {
+        format!("{:.1} KiB", b / KIB)
+    } else {
+        format!("{bytes} Bytes")
+    }
 }
 
 /// Wechselt in das Zielverzeichnis und legt fehlende Verzeichnisse an.
@@ -198,6 +326,22 @@ mod tests {
             status,
             b"test".to_vec(),
         )))
+    }
+
+    #[test]
+    fn quota_errors_are_detected() {
+        assert!(is_out_of_space(&response(Status::ExceededStorage)));
+        assert!(is_out_of_space(&response(Status::RequestedActionNotTaken)));
+        assert!(!is_out_of_space(&response(Status::NotLoggedIn)));
+    }
+
+    #[test]
+    fn only_problem_files_are_cleaned() {
+        assert!(is_problem_file("problem-anfaenger.png"));
+        assert!(is_problem_file("problem-anfaenger-solution.png"));
+        assert!(is_problem_file("problem-experte.sgf"));
+        assert!(!is_problem_file("index.html"));
+        assert!(!is_problem_file("logo.png"));
     }
 
     #[test]
