@@ -8,6 +8,7 @@ ab_glyph = "0.2"
 anyhow = "1"
 image = { version = "0.25", default-features = false, features = ["png"] }
 native-tls = "0.2.18"
+openssl = { version = "0.10", features = ["vendored"] }
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 serde = { version = "1", features = ["derive"] }

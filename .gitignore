@@ -1,3 +1,4 @@
 /target
 problems/*.sgf
 problems/*.png
+secrets.env
