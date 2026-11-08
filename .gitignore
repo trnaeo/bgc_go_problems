@@ -1,4 +1,4 @@
 /target
-problems/*.sgf
-problems/*.png
+# problems/*.sgf
+# problems/*.png
 secrets.env
