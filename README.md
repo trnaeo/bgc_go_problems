@@ -5,7 +5,8 @@ A small Rust command-line tool that fetches Go (Weiqi/Baduk) problems from a
 optionally uploads the results to a web server via FTP. It was written for the
 Berner Go Club (BGC) to publish fresh problems every day.
 
-For every configured level (e.g. `26k`, `20k`, `14k`, `8k`, `2k`) the tool:
+For every configured level (`anfaenger` 26k–16k, `aufsteiger` 15k–11k, `mittelstufe` 10k–6k,
+`fortgeschritten` 5k–1d, `experte` 2d–3d) the tool:
 
 1. picks a random rank within the level's range and requests a problem from the API,
 2. validates the SGF and adds a root comment (rank, description, number of approaches),
@@ -72,7 +73,7 @@ Everything is configured in [`config.toml`](config.toml):
 - `[ftp]` – `enabled`, names of the credential environment variables, `remote_dir`,
   `security` (`explicit_tls` or `plain`), `accept_invalid_certs`, and the retry settings
   `retry_wait_minutes` (default 5) and `max_attempts` (default 3, total number of attempts)
-- `[[levels]]` – one entry per level with a `name` and a rank range (`from` / `to`, e.g. `"20k"` – `"25k"`)
+- `[[levels]]` – one entry per level with a `name` and a rank range (`from` / `to`, e.g. `"26k"` – `"16k"`; a random rank within the range is requested)
 
 > **Note:** `accept_invalid_certs = true` disables certificate verification for FTPS.
 > Set it to `false` as soon as the server has a valid certificate.
@@ -87,7 +88,40 @@ immediately, so that a wrong password is not tried repeatedly.
 If you change `max_attempts` or `retry_wait_minutes`, keep `timeout-minutes` of the
 `upload` job in the workflow in mind.
 
-## GitHub Actions
+### FTP free space and clean-up
+
+FTP servers often have a disk quota, and plain FTP has no standard command to query the
+free space. The upload therefore works in two steps:
+
+1. **Before the upload** the tool asks the server for the free space (`AVBL`, a non-standard
+   extension) and logs it together with the space needed for the new files, e.g.
+   `Freier Speicher auf dem FTP-Server: 12.30 MiB (benötigt für Upload: 1.20 MiB)`.
+   If the server does not report it, the log says `unbekannt`. If the free space is
+   smaller than needed, the old `problem-*.png` and `problem-*.sgf` files in `remote_dir`
+   are deleted first.
+2. **During the upload**, if the server answers with `552` (quota exceeded) or `452`
+   (insufficient storage), the old `problem-*.png` / `problem-*.sgf` files in `remote_dir`
+   are deleted once and the failed file is uploaded again. Files already uploaded in the
+   same run are kept. This is the fallback for servers that do not report the free space.
+
+Every step is logged (`gelöscht: <file> (<size>)`, number of deleted files, freed space).
+Only files starting with `problem-` and ending in `.png` or `.sgf` are deleted; other
+files in `remote_dir` are never touched.
+
+## Deployment (Raspberry Pi)
+
+[`deploy.sh`](deploy.sh) cross-compiles the binary for the Raspberry Pi (aarch64, glibc 2.31)
+with [`cargo-zigbuild`](https://github.com/rust-cross/cargo-zigbuild) and copies it together
+with `config.toml` and `secrets.env` (if present) to `bgcuser@raspberrypi2:/home/bgcuser/go_problems/`:
+
+```sh
+./deploy.sh
+```
+
+Requirements: `cargo-zigbuild`, [Zig](https://ziglang.org/), the Rust target
+`aarch64-unknown-linux-gnu` (`rustup target add aarch64-unknown-linux-gnu`), `rsync` and SSH access to the Pi.
+
+## GitHub Actions (Disabled)
 
 [`.github/workflows/daily.yml`](.github/workflows/daily.yml) runs every day at 00:00 UTC
 (and on manual dispatch) as two jobs:
@@ -119,7 +153,7 @@ src/
   sgf.rs      SGF parsing
   board.rs    board logic (captures etc.)
   render.rs   PNG rendering
-  ftp.rs      FTP/FTPS upload
+  ftp.rs      FTP/FTPS upload (retries, free-space check, clean-up)
 assets/       font used for rendering
 examples/     sample SGF and rendered images
 problems/     generated problems (output)
